@@ -1,79 +1,61 @@
-/*global $, handlers, app */
-/*exported chatMethods */
-var chatMethods = {};
-
-chatMethods.newChat = function(chat){
-  var $chat = this.makeChat(chat);
-  if (app.rooms.indexOf(chat.roomname) === -1){
-    app.rooms.push(roomname);
-    this.createRoomButton(chat.roomname);
-  }
-
-app.updateUser = function(username){
-  // if username does not exist in current users array
-  // push it to users array
-  if (app.users.indexOf(username) === -1){
-    app.users.push(username);
-  }
+/*global $, app */
+/*exported chats */
+var chats = {
+  $chatContainer: '',
+  $roomButtonContainer: ''
 };
-  //apply room filter
-  if (app.room !== app.defaults.roomname ){
-    app.enterRoom($chat);
-  }
-  //apply friend filter
-  $.each(app.friends, function(name){
-    if (chat.username === name){
-      app.befriend($chat);
-    }
-  });
+//chat ====================================================
+chats.newChat = function(chat){
+  var $chat = this.makeChat(chat);
+  $chat.trigger('befriend');
+  $chat.trigger('changeRoom');
   return $chat;
 };
 
-chatMethods.makeChat = function(chat){
+chats.makeChat = function(chat){
+  //escaping
   chat.username = this.escape(chat.username);
   chat.roomname = this.escape(chat.roomname);
   chat.text = this.escape(chat.text);
   chat.updatedAt = this.escape(chat.updatedAt);
 
+  //templating
   var $chat = $(
-    '<div class="content">' +
-    chat.text +
-    '</div>' +
-    '<div class="updatedAt">' +
-    chat.updatedAt +
+    '<div class="chat">' +
+      '<div class="roomname" id="' + chat.roomname + '">' +
+        chat.roomname +
+      '</div>' +
+      '<div class="username" id="' + chat.username + '">' +
+        chat.username +
+      '</div>' +
+      '<div class="content">' +
+        chat.text +
+      '</div>' +
+      '<div class="updatedAt">' +
+        chat.updatedAt +
+      '</div>' +
     '</div>'
   );
 
-  var $username = $(
-    '<div class="username" id="' + chat.username + '">' +
-    chat.username +
-    '</div>');
-  var $roomname = $(
-    '<div class="roomname" id="' + chat.roomname + '">' +
-    chat.roomname +
-    '</div>');
-
-  //listeners
-  $username.on('click', function(){
-    handlers.addFriends(chat.username);
+  //action listeners
+  $chat.on('click', '.username', function(){
+    $('.chat').trigger('befriend', chat.username);
   });
 
-  //assemble
-  $chat.prepend($username);
-  $chat.prepend($roomname);
+  $chat.on('click', '.roomname', function(){
+    $('.chat').trigger('openRoom', chat.roomname);
+  });
+
+  //response handlers
+  $chat.on('befriend', function(event, friend){
+    if(friend === chat.username){
+      $chat.addClass('friend');
+    }
+  });
+
   return $chat;
 };
 
-chatMethods.createRoomButton = function(roomname){
-  $roomButton = $('<div class="roomButton">' + app.escape(roomname) + '</div>');
-  $roomButton.on('click', function(){
-    app.setRoom($(this).html());
-  });
-  return $roomButton;
-};
-
-chatMethods.
-
-app.escape = function(text){
+chats.escape = function(text){
   return $('<i></i>').text(text).html();
 };

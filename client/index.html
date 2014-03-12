@@ -9,8 +9,12 @@
     <script src="../bower_components/jquery/jquery.min.js"></script>
     <script src="../bower_components/underscore/underscore.js"></script>
     <!-- your scripts -->
-    <script src="scripts/config.js"></script>
+    <script src="scripts/myChat.js"></script>
+    <script src="scripts/roomButton.js"></script>
+    <script src="scripts/chat.js"></script>
+    <script src="scripts/tab.js"></script>
     <script src="scripts/app.js"></script>
+    <script src="scripts/config.js"></script>
     <script>
 $(document).ready(function(){
   app.init();
@@ -22,20 +26,10 @@ $(document).ready(function(){
       <header>
         <h1>chatterbox</h1>
       </header>
-      <div id="roomButtons">
-      </div>
       <div id="roomSelect">
 
       </div>
-      <div id="send">
-        <textarea id="draft"></textarea>
-        <form>
-          <button class="submit" action="submit">
-            Submit
-          </button>
-        </form>
-      </div>
-      <div id="chats">
+      <div id="tabs">
 
       </div>
     </div>

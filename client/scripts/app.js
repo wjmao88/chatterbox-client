@@ -1,158 +1,53 @@
-/* global $, _ */
+/* global $, tabs, roomButtons */
 var app = {};
 //config ==================================================
 app.server = 'https://api.parse.com/1/classes/chatterbox';
-app.sel = {};
-app.sel.chats = '#chats';
-app.sel.roomButtons = '#roomSelect';
-app.sel.draft = '#draft';
-app.sel.submit = '.submit';
 //defaults ================================================
 app.defaults = {};
-app.defaults.roomname = 'Display All Rooms'
+app.defaults.roomname = 'Lobby';
+app.defaults.roomChatLimit = 10;
 //data ====================================================
 app.username = 'Anonymous';
-app.friends = [];
-app.room = app.defaults.roomname;
-app.users = [];
-app.rooms = [];
-app.chats = [];
-app.latestTime = 0;
+app.friends = {};
 app.latestDate = new Date(0);
+app.roomnames = {};
 
-app.roomButton = $(app.defaults.roomname);
-
-app.query = {
-  order: '-createdAt',
-  where: {
-    updatedAt: {
-      $gt: app.latestDate
+app.getQuery = function(){
+  return {
+    order: '-createdAt',
+    where: {
     }
-  }
+  };
 };
 
-//controller interface ====================================
+//init ====================================================
 app.init = function(){
-  app.fetch(false);
-  $(app.sel.submit).on('submit',function(){
-    app.handleSubmit();
-  });
+  app.$tabContainer = $('#tabs');
+  app.$roomButtonContainer = $('#roomSelect');
+  app.$myChatContainer = $('.send');
+  app.fetch();
   app.addRoom(app.defaults.roomname);
 };
 
-app.fetchCallback = function(data){
-  //sort based on time
-  data.results.sort(function(a, b){
-    return a.updatedAt.getTime() - b.updatedAt.getTime();
-  });
-
-  //add chats
-  $.each(data.results, function(item){
-    app.addChat(item);
-    app.latestDate = item.updatedAt;
-  });
-
-  //filter new chats by triggering the events
-  //that was triggered previously
-  app.chatFilter();
-
-  //cycle fetch
-  app.fetchTimeout = setTimeout(function(){
-    app.fetch(false);
-  }, 0);
-};
-
-app.clearChats = function(){
-  app.chats.length = 0;
-  $(app.sel.chats).empty();
-};
-
-app.addChat = function(msg){
-  app.chats.push(msg);
-  app.updateUser(msg.username);
-  app.updateRoom(msg.roomname);
-  app.updateChat(msg);
-};
-
-app.chatFilter = function($chat, msg){
-  //room
-  if (app.room !== app.defaults.roomname ){
-    app.enterRoom($chat);
-  }
-  //friend
-  $.each(app.friends,function(name){
-    if (msg.username === name){
-      app.befriend($chat);
-    }
-  });
-
-
-};
-//event handlers ==========================================
-app.enterRoom = function($chat){
-
-};
-
-//=========================================================
-app.setRoom = function(roomname){
-  app.room = roomname;
-  if (roomname === app.defaults.roomname){
-    delete app.query.where.roomname;
-  } else {
-    app.query.where.roomname = roomname;
-  }
-  app.fetch(true);
-};
-//=========================================================
-app.updateUser = function(username){
-  // if username does not exist in current users array
-  // push it to users array
-  if (app.users.indexOf(username) === -1){
-    app.users.push(username);
+//app state================================================
+app.addRoom =  function(roomname){
+  if(!app.roomnames[roomname]){
+    roomButtons.newRoomButton(roomname, app.$roomButtonContainer);
+    tabs.newTab(roomname, app.$tabContainer);
+    app.roomnames[roomname] = true;
   }
 };
-
-app.updateRoom = function(roomname){
-  if (app.rooms.indexOf(roomname) === -1){
-    app.rooms.push(roomname);
-    app.addRoom(roomname);
-  }
-};
-
-app.addFriend = function(username){
-  if (app.friends.indexOf(username) === -1){
-    app.friends.push(username);
-  }
-};
-
-//=========================================================
-app.handleSubmit = function(){
-  var draft = $(app.sel.draft);
-  app.send({
-    username: app.username,
-    content: draft.text(),
-    roomname: app.roomname
-  });
-  draft.text('');
-};
-//view ====================================================
-app.addRoom = function(room){
-  $(app.sel.roomButtons).append(app.createRoomButton(room));
-};
-
-app.updateChat = function(msg){
-  $(app.sel.chats).prepend(app.createChat(msg));
-};
-
-
-//model ===================================================
-
 //server ==================================================
-app.send = function(msg){
+app.send = function(text, roomname){
+  var data = {
+    username: $.parseParams(window.location.search).username,
+    text: text,
+    roomname: roomname
+  };
   $.ajax({
     url: app.server,
     type: 'POST',
-    data: JSON.stringify(msg),
+    data: JSON.stringify(data),
     contentType: 'application/json',
     success: function(){
       console.log('success');
@@ -163,21 +58,35 @@ app.send = function(msg){
   });
 };
 
-app.fetch = function(total){
+app.fetch = function(){
   $.ajax({
     url: app.server,
     type: 'GET',
-    data: app.query,
+    data: app.getQuery(),
     success: function(data){
-      app.fetchCallback(data, total);
+      data.results.sort(function(a, b){
+        return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      });
+      var index = 0;
+      while(index < data.results.length && data.results[index].updatedAt <= app.latestDate){
+        index++;
+      }
+      data.results = data.results.slice(index);
+      if (data.results.length > 0){
+        $.each(data.results, function(i, chat){
+          app.addRoom(chat.roomname);
+        });
+        $('.tab').trigger('newChats', [data.results]);
+        app.latestDate = data.results[data.results.length-1].updatedAt;
+      }
+      //cycle fetch
+      app.fetchTimeout = setTimeout(function(){
+        app.fetch();
+      }, 0);
     },
     error: function(data){
-      console.log(data);
+      console.error(data);
     }
   });
 };
 
-//helpers =================================================
-app.escape = function(text){
-  return $('<i></i>').text(text).html();
-};
